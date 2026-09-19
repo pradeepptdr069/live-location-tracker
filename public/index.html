@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Location Tracker - Pradeep Patidar</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; width: 100%; font-family: Arial, sans-serif; overflow: hidden; }
+    header {
+      height: 50px;
+      background-color: #111827;
+      color: #ffffff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+      z-index: 1000;
+      position: relative;
+    }
+    .dev-tag { color: #60a5fa; font-size: 14px; font-weight: bold; }
+    .logout-link { color: #f87171; text-decoration: none; font-size: 13px; margin-left: 15px; }
+    #status-bar {
+      background-color: #dcfce7;
+      color: #166534;
+      padding: 6px 20px;
+      font-size: 13px;
+      border-bottom: 1px solid #86efac;
+      z-index: 1000;
+      position: relative;
+    }
+    #map { height: calc(100vh - 80px); width: 100vw; background-color: #e5e7eb; }
+
+    /* Custom Distance Tooltip on Point */
+    .distance-tooltip {
+      background-color: #111827;
+      color: #38bdf8;
+      font-weight: bold;
+      font-size: 13px;
+      border: 1px solid #38bdf8;
+      border-radius: 4px;
+      padding: 4px 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div><strong>Live Geolocation Control Center</strong></div>
+    <div>
+      <span class="dev-tag">Developer: Pradeep Patidar</span>
+      <a href="/logout" class="logout-link">Logout</a>
+    </div>
+  </header>
+
+  <div id="status-bar">Connecting & requesting live coordinates... (Click on 2 map points to measure)</div>
+
+  <div id="map"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    const socket = io();
+    const statusBar = document.getElementById('status-bar');
+    const markers = {};
+
+    // 1. Initialize Map
+    const map = L.map('map').setView([20.5937, 78.9629], 5);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    setTimeout(() => { map.invalidateSize(); }, 400);
+
+    // 2. Point-to-Point Exact Distance on Map Click
+    let points = [];
+    let routeLine = null;
+
+    map.on('click', (e) => {
+      // 2 points ke baad agar click ho toh pehle ka clear karke naya shuru karo
+      if (points.length >= 2) {
+        points.forEach(p => map.removeLayer(p.marker));
+        points = [];
+        if (routeLine) {
+          map.removeLayer(routeLine);
+          routeLine = null;
+        }
+      }
+
+      const isPointOne = points.length === 0;
+
+      // Circle Marker
+      const pMarker = L.circleMarker(e.latlng, {
+        color: isPointOne ? '#2563eb' : '#dc2626',
+        radius: 6,
+        fillColor: isPointOne ? '#3b82f6' : '#ef4444',
+        fillOpacity: 1
+      }).addTo(map);
+
+      points.push({ marker: pMarker, latlng: e.latlng });
+
+      if (isPointOne) {
+        pMarker.bindTooltip("Point 1 (Start)", { permanent: true, direction: "top" }).openTooltip();
+        statusBar.innerText = "Point 1 selected. Ab Point 2 par click karein...";
+      } else {
+        const p1 = points[0].latlng;
+        const p2 = points[1].latlng;
+
+        // Leaflet built-in high-accuracy distance calculation (in meters -> converted to km)
+        const distanceMeters = p1.distanceTo(p2);
+        const distanceKm = (distanceMeters / 1000).toFixed(2);
+
+        // Dashed Route Line
+        routeLine = L.polyline([p1, p2], {
+          color: '#111827',
+          weight: 3,
+          dashArray: '6, 6'
+        }).addTo(map);
+
+        // Seedha usi point par distance tooltip open hoga
+        pMarker.bindTooltip(`Distance: ${distanceKm} km`, {
+          permanent: true,
+          direction: "top",
+          className: "distance-tooltip"
+        }).openTooltip();
+
+        statusBar.innerText = `Distance: ${distanceKm} km. (Naya measure karne ke liye fir se click karein)`;
+      }
+    });
+
+    // 3. Geolocation Tracking
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude, longitude, accuracy } = pos.coords;
+          socket.emit('update-location', {
+            latitude,
+            longitude,
+            accuracy,
+            timestamp: pos.timestamp
+          });
+        },
+        (err) => console.warn(err.message),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+
+    // 4. Multi-client Socket Markers
+    socket.on('client-location-feed', (data) => {
+      const { clientId, username, latitude, longitude } = data;
+
+      if (markers[clientId]) {
+        markers[clientId].setLatLng([latitude, longitude]);
+      } else {
+        markers[clientId] = L.marker([latitude, longitude])
+          .addTo(map)
+          .bindPopup(`<b>User:</b> ${username || 'Active Client'}<br><b>ID:</b> ${clientId}`);
+      }
+    });
+
+    socket.on('client-disconnected', (id) => {
+      if (markers[id]) {
+        map.removeLayer(markers[id]);
+        delete markers[id];
+      }
+    });
+  </script>
+</body>
+</html>

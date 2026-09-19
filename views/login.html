@@ -1,39 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/1.0.2/css/bulma.min.css">
+    <title>Login - Live Location Tracker</title>
     <style>
         body {
-            display: grid;
-            place-items: center;
+            font-family: Arial, sans-serif;
+            background: #121212;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             height: 100vh;
+            margin: 0;
         }
-
-        form {
-            width: 300px;
-            text-align: center;
+        .login-card {
+            background: #1e1e1e;
+            padding: 30px;
+            border-radius: 8px;
+            width: 320px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
+        h2 { margin-top: 0; }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border: 1px solid #333;
+            background: #2a2a2a;
+            color: #fff;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #007bff;
+            border: none;
+            color: #fff;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
     </style>
 </head>
-
 <body>
-    <form action="/login" method="post">
-        <h1 class="title">Login</h1>
-
-        <div class="field">
-            <input type="text" class="input" placeholder="Username" required name="username">
-        </div>
-
-        <div class="field">
-            <input type="password" class="input" placeholder="Password" required name="password">
-        </div>
-
-        <input type="submit" value="Login" class="button is-fullwidth is-primary">
-    </form>
+    <div class="login-card">
+        <h2>System Login</h2>
+        <form method="POST" action="/login">
+            <label>Username</label>
+            <input type="text" name="username" placeholder="admin" required />
+            <label>Password</label>
+            <input type="password" name="password" placeholder="password123" required />
+            <button type="submit">Sign In</button>
+        </form>
+    </div>
 </body>
-
 </html>
