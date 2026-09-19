@@ -9,7 +9,7 @@ To get this application up and running, ensure you have the following:
 ## Installation
 1. **Clone the repository**:
 ```bash
-git clone https://github.com/madhanmaaz/live-location-tracker.git
+git clone https://github.com/pradeepptdr069/live-location-tracker.git
 cd live-location-tracker
 ```
 
